@@ -132,11 +132,18 @@
         </div>
 
         <!-- Settings Button -->
-        <div id="settings-btn" onclick="toggleSettings()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        </div>
+    <div id="settings-btn" onclick="toggleSettings()">
+        <!-- Static Image -->
+        <img id="settings-icon-img"
+             src="https://avatars.githubusercontent.com/u/100243124?v=4" 
+             alt="Settings" 
+             title="Click to Configure"
+             onerror="this.style.display='none'; document.getElementById('settings-icon-svg').style.display='block'"
+             class="w-12 h-12 rounded-full border-2 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.6)] object-cover bg-gray-800">
+        
+        <!-- Fallback Icon (User Profile SVG) -->
+        <svg id="settings-icon-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bg-purple-600 rounded-full p-2 w-12 h-12 border-2 border-white shadow-lg"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
     </div>
-
     <!-- Settings Modal -->
     <div id="settings-panel">
         <h2 class="text-2xl font-bold mb-4 text-purple-400">Widget Settings</h2>
