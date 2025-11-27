@@ -80,7 +80,7 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
 
-        /* Settings Button - Top Right */
+                /* Settings Button - Top Right */
         #settings-btn {
             position: absolute;
             top: 20px;
@@ -89,9 +89,9 @@
             opacity: 0.5;
             transition: opacity 0.3s;
             z-index: 40;
-            background: white;
+            background: rgb(252, 175, 255);
             border-radius: 50%;
-            padding: 8px;
+            padding: 2px;
             cursor: pointer;
         }
         #settings-btn:hover { opacity: 1; }
@@ -113,6 +113,7 @@
 </head>
 <body>
 
+    <!-- Canvas for Matter.js -->
     <canvas id="game-canvas"></canvas>
 
     <!-- UI Overlay -->
@@ -132,14 +133,14 @@
         </div>
 
         <!-- Settings Button -->
-    <div id="settings-btn" onclick="toggleSettings()">
-        <!-- Static Image -->
-        <img id="settings-icon-img"
-             src="https://avatars.githubusercontent.com/u/100243124?v=4" 
-             alt="Settings" 
-             title="Click to Configure"
-             onerror="this.style.display='none'; document.getElementById('settings-icon-svg').style.display='block'"
-             class="w-12 h-12 rounded-full border-2 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.6)] object-cover bg-gray-800">
+        <div id="settings-btn" onclick="toggleSettings()">
+            <img id="settings-icon-img"
+                 src="https://avatars.githubusercontent.com/u/100243124?v=4" 
+                 alt="Settings" 
+                 title="Click to Configure"
+                 class="w-12 h-12 rounded-full">
+        </div>
+    </div>
     <!-- Settings Modal -->
     <div id="settings-panel">
         <h2 class="text-2xl font-bold mb-4 text-purple-400">Widget Settings</h2>
