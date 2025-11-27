@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Plinko</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, 0.4); 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* HUD Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas/settings */
+        }
+
+        /* Leaderboard - Top Left */
+        .leaderboard {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            width: 250px; /* Slightly smaller for compact view */
+            pointer-events: auto;
+            border: 2px solid #8b5cf6;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+        }
+
+        /* Title Area - Top Center */
+        #title-area {
+            position: absolute;
+            top: 10px;
+            left: 0; 
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Settings Panel */
+        #settings-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(17, 24, 39, 0.98);
+            padding: 2rem;
+            border-radius: 1rem;
+            color: white;
+            z-index: 50;
+            border: 1px solid #4b5563;
+            width: 400px;
+            pointer-events: auto;
+            display: none; /* Hidden by default */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* Settings Button - Top Right */
+        #settings-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            pointer-events: auto;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+            z-index: 40;
+            background: white;
+            border-radius: 50%;
+            padding: 8px;
+            cursor: pointer;
+        }
+        #settings-btn:hover { opacity: 1; }
+
+        .glass-text {
+            text-shadow: 0 0 15px rgba(192, 132, 252, 0.6);
+        }
+
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="game-canvas"></canvas>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        <!-- Title -->
+        <div id="title-area" class="animate-float">
+            <h1 class="text-5xl font-black text-white tracking-tighter glass-text" style="color: #c084fc; -webkit-text-stroke: 1.5px #581c87;">STREAM PLINKO</h1>
+            <p class="text-sm text-purple-200 font-bold mt-1 bg-black/50 px-3 py-1 rounded-full inline-block">Type <span class="text-yellow-400">!drop</span> to play</p>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="leaderboard hidden md:block">
+            <h3 class="text-lg font-bold mb-2 border-b border-purple-500 pb-1 text-purple-300">Top Scorers</h3>
+            <ul id="score-list" class="space-y-1 text-xs">
+                <li class="text-gray-400 italic">Waiting for players...</li>
+            </ul>
+        </div>
+
+        <!-- Settings Button -->
+        <div id="settings-btn" onclick="toggleSettings()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-panel">
+        <h2 class="text-2xl font-bold mb-4 text-purple-400">Widget Settings</h2>
+        
+        <!-- Status Indicator -->
+        <div id="connection-status" class="mb-4 text-sm font-mono p-2 bg-black/40 rounded border border-gray-600 text-gray-400">
+            Status: Idle
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm font-bold mb-2">Twitch Channel</label>
+            <input type="text" id="channel-input" placeholder="Twitch Username (e.g. ninja)" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:border-purple-500 text-white">
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm font-bold mb-2">Owncast Server</label>
+            <input type="text" id="owncast-input" placeholder="e.g. https://watch.myowncast.xyz" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:border-purple-500 text-white">
+        </div>
+
+        <div class="mb-6">
+            <label class="flex items-center space-x-3 cursor-pointer">
+                <input type="checkbox" id="auto-mode-check" class="form-checkbox h-5 w-5 text-purple-600">
+                <span class="text-white font-medium">Enable Auto-Bot Mode</span>
+            </label>
+            <p class="text-xs text-gray-400 mt-1 ml-8">Simulates chatters for offline testing.</p>
+        </div>
+
+        <div class="flex space-x-3">
+            <button onclick="saveSettings()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition">
+                Start / Save
+            </button>
+            <button onclick="toggleSettings()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition">
+                Close
+            </button>
+        </div>
+        
+        <div class="mt-4 pt-4 border-t border-gray-700 text-center">
+             <button onclick="spawnBall('TestUser', false)" class="text-xs text-gray-400 hover:text-white underline">Spawn Test Ball</button>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME CONFIGURATION ---
+        const GAME_CONFIG = {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            // Tuned for 800x600 resolution
+            pegRows: 9, 
+            pegGapY: 45, 
+            pegGapX: 55,
+            ballSize: 18, 
+            bucketCount: 8,
+            bucketHeight: 80,
+            colors: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#d946ef'],
+            maxBallAge: 60000 
+        };
+
+        let engine, render, runner;
+        let twitchSocket = null; 
+        let owncastSocket = null;
+        let autoModeInterval = null;
+        let despawnInterval = null;
+        let scores = {};
+        let pingInterval = null;
+
+        // --- MATTER.JS SETUP ---
+        function initGame() {
+            const Engine = Matter.Engine,
+                  Render = Matter.Render,
+                  Runner = Matter.Runner,
+                  Bodies = Matter.Bodies,
+                  Composite = Matter.Composite,
+                  Events = Matter.Events;
+
+            engine = Engine.create();
+            engine.world.gravity.y = 1.2; // Slightly lower gravity for smoother fall
+
+            const canvas = document.getElementById('game-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            render = Render.create({
+                canvas: canvas,
+                engine: engine,
+                options: {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    wireframes: false,
+                    background: 'transparent', 
+                    pixelRatio: window.devicePixelRatio
+                }
+            });
+
+            // --- RENDERING ---
+            Events.on(render, 'afterRender', function() {
+                const ctx = render.context;
+                const bodies = Composite.allBodies(engine.world);
+
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
+                bodies.forEach(body => {
+                    // Draw Scores on Buckets
+                    if (body.label === 'sensor') {
+                        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+                        ctx.font = "bold 20px Arial";
+                        // Position text slightly above bottom of screen
+                        ctx.fillText(body.scoreValue, body.position.x, body.position.y);
+                    }
+
+                    // Draw Usernames on Balls
+                    if (body.label === 'ball') {
+                        const yOffset = body.render.sprite && body.render.sprite.texture ? GAME_CONFIG.ballSize + 12 : 0;
+                        
+                        ctx.fillStyle = "white";
+                        ctx.font = "bold 11px Arial";
+                        ctx.shadowColor = "black";
+                        ctx.shadowBlur = 4;
+                        ctx.fillText(body.username.substring(0, 10), body.position.x, body.position.y + yOffset);
+                        ctx.shadowBlur = 0;
+                    }
+                });
+            });
+
+            buildBoard();
+            Render.run(render);
+            runner = Runner.create();
+            Runner.run(runner, engine);
+
+            startDespawnCheck();
+
+            // Collision Detection
+            Events.on(engine, 'collisionStart', function(event) {
+                const pairs = event.pairs;
+                pairs.forEach(pair => {
+                    const bodyA = pair.bodyA;
+                    const bodyB = pair.bodyB;
+
+                    if (bodyA.label === 'sensor' || bodyB.label === 'sensor') {
+                        const ball = bodyA.label === 'ball' ? bodyA : (bodyB.label === 'ball' ? bodyB : null);
+                        const sensor = bodyA.label === 'sensor' ? bodyA : bodyB;
+
+                        if (ball && sensor && !ball.hasScored) {
+                            ball.hasScored = true;
+                            addScore(ball.username, sensor.scoreValue);
+                            setTimeout(() => { Composite.remove(engine.world, ball); }, 500);
+                        }
+                    }
+                });
+            });
+
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                // Ideally we rebuild board here, but for OBS fixed size it's fine
+            });
+        }
+
+        function startDespawnCheck() {
+            if (despawnInterval) clearInterval(despawnInterval);
+            despawnInterval = setInterval(() => {
+                const now = Date.now();
+                const bodies = Matter.Composite.allBodies(engine.world);
+                bodies.forEach(body => {
+                    if (body.label === 'ball' && body.createdAt) {
+                        if (now - body.createdAt > GAME_CONFIG.maxBallAge) {
+                            Matter.Composite.remove(engine.world, body);
+                        }
+                    }
+                });
+            }, 5000); 
+        }
+
+        function buildBoard() {
+            const Bodies = Matter.Bodies;
+            const Composite = Matter.Composite;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            Composite.clear(engine.world);
+
+            // Walls
+            const walls = [
+                Bodies.rectangle(width / 2, height + 50, width, 100, { isStatic: true, render: { visible: false } }),
+                Bodies.rectangle(-50, height / 2, 100, height * 5, { isStatic: true, friction: 0, render: { visible: false } }),
+                Bodies.rectangle(width + 50, height / 2, 100, height * 5, { isStatic: true, friction: 0, render: { visible: false } })
+            ];
+            Composite.add(engine.world, walls);
+
+            // BUCKETS (Bottom)
+            const bucketW = width / GAME_CONFIG.bucketCount;
+            const wallH = GAME_CONFIG.bucketHeight; 
+            
+            for (let i = 0; i < GAME_CONFIG.bucketCount; i++) {
+                const x = i * bucketW + bucketW / 2;
+                const distFromCenter = Math.abs((GAME_CONFIG.bucketCount / 2) - i - 0.5);
+                const scoreVal = 100 - (Math.floor(distFromCenter) * 10); 
+
+                // Dividers
+                if (i > 0) {
+                    const divider = Bodies.rectangle(i * bucketW, height - wallH / 2, 6, wallH, {
+                        isStatic: true,
+                        render: { 
+                            fillStyle: 'rgba(255,255,255,0.1)',
+                            strokeStyle: 'rgba(255,255,255,0.3)',
+                            lineWidth: 1
+                        }
+                    });
+                    Composite.add(engine.world, divider);
+                }
+
+                // Sensor
+                const sensor = Bodies.rectangle(x, height - 15, bucketW - 10, 30, {
+                    isStatic: true,
+                    isSensor: true,
+                    label: 'sensor',
+                    scoreValue: scoreVal,
+                    render: { visible: false }
+                });
+                Composite.add(engine.world, sensor);
+            }
+
+            // PEGS (Middle)
+            const startY = 120; 
+            const gapY = GAME_CONFIG.pegGapY;
+            const gapX = GAME_CONFIG.pegGapX;
+            const pegSize = 6;
+            
+            for (let row = 0; row < GAME_CONFIG.pegRows; row++) {
+                const y = startY + row * gapY;
+                const offset = (row % 2 === 0) ? 0 : gapX / 2;
+                const cols = Math.floor(width / gapX) + 1;
+                
+                for (let col = -1; col < cols; col++) {
+                    const x = col * gapX + offset;
+                    const neonColor = row % 2 === 0 ? '#4ade80' : '#a78bfa';
+                    const peg = Bodies.circle(x, y, pegSize, {
+                        isStatic: true,
+                        restitution: 0.8,
+                        render: { 
+                            fillStyle: 'rgba(255,255,255,0.2)',
+                            strokeStyle: neonColor,
+                            lineWidth: 2
+                        }
+                    });
+                    Composite.add(engine.world, peg);
+                }
+            }
+        }
+
+        function spawnBall(username, isTwitch = false) {
+            const Bodies = Matter.Bodies;
+            const Composite = Matter.Composite;
+            
+            // Random Drop X
+            const padding = 50;
+            const startX = padding + (Math.random() * (window.innerWidth - (padding * 2)));
+            
+            const color = GAME_CONFIG.colors[Math.floor(Math.random() * GAME_CONFIG.colors.length)];
+            const ballRadius = GAME_CONFIG.ballSize;
+
+            let renderConfig = {
+                fillStyle: color,
+                strokeStyle: '#ffffff',
+                lineWidth: 2
+            };
+
+            const ball = Bodies.circle(startX, -40, ballRadius, {
+                restitution: 0.6,
+                friction: 0.002,
+                density: 0.04,
+                label: 'ball',
+                username: username,
+                hasScored: false,
+                createdAt: Date.now(),
+                render: renderConfig
+            });
+
+            Composite.add(engine.world, ball);
+
+            // Avatar Loading
+            if (isTwitch && username) {
+                const avatarUrl = `https://static-cdn.jtvnw.net/jtv_user_pictures/${username.toLowerCase()}-profile_image-70x70.png`;
+                const scale = (ballRadius * 2.1) / 70; 
+
+                const img = new Image();
+                img.crossOrigin = "Anonymous"; 
+                img.onload = function() {
+                    ball.render.sprite.texture = avatarUrl;
+                    ball.render.sprite.xScale = scale;
+                    ball.render.sprite.yScale = scale;
+                };
+                img.onerror = function() {
+                    console.log(`Failed to load avatar for ${username}`);
+                };
+                img.src = avatarUrl;
+            }
+        }
+
+        function addScore(username, points) {
+            if (!scores[username]) scores[username] = 0;
+            scores[username] += points;
+            updateLeaderboard();
+        }
+
+        function updateLeaderboard() {
+            const list = document.getElementById('score-list');
+            const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 8);
+            list.innerHTML = sorted.map(([name, score], index) => `
+                <li class="flex justify-between items-center py-1 border-b border-gray-700">
+                    <span class="font-bold ${index === 0 ? 'text-yellow-400' : 'text-gray-300'}">
+                        ${index + 1}. ${name}
+                    </span>
+                    <span class="text-purple-400 font-mono">${score}</span>
+                </li>
+            `).join('');
+        }
+
+        // --- SETTINGS ---
+        function toggleSettings() {
+            const panel = document.getElementById('settings-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function updateStatus(text, type = 'info') {
+            const el = document.getElementById('connection-status');
+            el.textContent = text;
+            if (type === 'error') {
+                el.className = "mb-4 text-sm font-mono p-2 bg-red-900/40 rounded border border-red-600 text-red-200";
+            } else if (type === 'success') {
+                el.className = "mb-4 text-sm font-mono p-2 bg-green-900/40 rounded border border-green-600 text-green-200";
+            } else {
+                el.className = "mb-4 text-sm font-mono p-2 bg-black/40 rounded border border-gray-600 text-gray-400";
+            }
+        }
+
+        async function saveSettings() {
+            const channel = document.getElementById('channel-input').value.trim().toLowerCase();
+            const owncastUrl = document.getElementById('owncast-input').value.trim();
+            const autoMode = document.getElementById('auto-mode-check').checked;
+
+            const settings = { channel, owncastUrl, autoMode };
+            localStorage.setItem('streamPlinkoSettings', JSON.stringify(settings));
+
+            if (autoModeInterval) { clearInterval(autoModeInterval); autoModeInterval = null; }
+            if (twitchSocket) { twitchSocket.close(); twitchSocket = null; }
+            if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
+            if (owncastSocket) { owncastSocket.close(); owncastSocket = null; }
+
+            if (autoMode) {
+                startAutoMode();
+                if(!channel && !owncastUrl) updateStatus("Auto-Mode Enabled (No Chat)", 'success');
+            }
+            if (channel) setupTwitch(channel);
+            if (owncastUrl) setupOwncast(owncastUrl);
+
+            if (!autoMode && !channel && !owncastUrl) {
+                updateStatus("Idle - No settings configured", 'info');
+            }
+
+            document.getElementById('settings-panel').style.display = 'none';
+        }
+
+        function startAutoMode() {
+            const fakeNames = ["CoolCat", "StreamFan", "Lurker99", "ModGod", "Newbie", "HypeTrain", "Gamer123"];
+            autoModeInterval = setInterval(() => {
+                const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+                spawnBall(name, false);
+            }, 2500);
+        }
+
+        function setupTwitch(channel) {
+            updateStatus(`Connecting to Twitch: ${channel}...`);
+            const ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+            twitchSocket = ws;
+
+            ws.onopen = () => {
+                ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                ws.send('PASS SCHMOOPIIE');
+                ws.send('NICK justinfan' + Math.floor(Math.random() * 10000));
+                ws.send('JOIN #' + channel);
+                updateStatus(`Connected to Twitch: #${channel}`, 'success');
+
+                pingInterval = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) ws.send('PING');
+                }, 240000);
+            };
+
+            ws.onmessage = (event) => {
+                const messages = event.data.split('\r\n');
+                messages.forEach(msg => {
+                    if (!msg) return;
+                    if (msg.startsWith('PING')) { ws.send('PONG :tmi.twitch.tv'); return; }
+                    if (msg.includes('PRIVMSG')) {
+                        let displayName = "Unknown";
+                        const tagMatch = msg.match(/display-name=([^;]+)/);
+                        if (tagMatch) displayName = tagMatch[1];
+                        else {
+                            const nickMatch = msg.match(/:(\w+)!\w+@/);
+                            if (nickMatch) displayName = nickMatch[1];
+                        }
+                        const splitMsg = msg.split(`PRIVMSG #${channel} :`);
+                        if (splitMsg.length > 1) {
+                            const chatMessage = splitMsg[1].trim();
+                            if (chatMessage.toLowerCase().startsWith('!drop')) {
+                                spawnBall(displayName, true);
+                            }
+                        }
+                    }
+                });
+            };
+
+            ws.onerror = (err) => {
+                console.error("Twitch WS Error", err);
+                updateStatus("Twitch connection error", 'error');
+            };
+
+            ws.onclose = () => {
+                console.log("Twitch connection closed");
+                if (pingInterval) clearInterval(pingInterval);
+            };
+        }
+
+        function setupOwncast(url) {
+            let wsUrl = url;
+            if (!url.startsWith('http') && !url.startsWith('ws')) { wsUrl = 'https://' + url; }
+            wsUrl = wsUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+            if (!wsUrl.endsWith('/chat/ws')) {
+                if (wsUrl.endsWith('/')) wsUrl = wsUrl.slice(0, -1);
+                wsUrl += '/chat/ws';
+            }
+
+            updateStatus(`Connecting to Owncast...`);
+            try {
+                owncastSocket = new WebSocket(wsUrl);
+                owncastSocket.onopen = () => { updateStatus(`Connected to Owncast`, 'success'); };
+                owncastSocket.onerror = (e) => { updateStatus(`Owncast Error`, 'error'); };
+                owncastSocket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'CHAT') {
+                        const body = data.body || "";
+                        if (body.toLowerCase().trim().startsWith('!drop')) {
+                            spawnBall(data.user.displayName, false);
+                        }
+                    }
+                };
+            } catch (e) {
+                updateStatus(`Owncast Config Error`, 'error');
+            }
+        }
+
+        window.onload = function() {
+            initGame();
+            
+            try {
+                const savedJson = localStorage.getItem('streamPlinkoSettings');
+                const savedSettings = savedJson ? JSON.parse(savedJson) : {};
+                const urlParams = new URLSearchParams(window.location.search);
+                
+                const channel = urlParams.get('channel') || savedSettings.channel || '';
+                const owncast = urlParams.get('owncast') || savedSettings.owncastUrl || '';
+                const auto = urlParams.get('auto') === 'true' || savedSettings.autoMode || false;
+
+                document.getElementById('channel-input').value = channel;
+                document.getElementById('owncast-input').value = owncast;
+                document.getElementById('auto-mode-check').checked = auto;
+
+                if (channel || owncast || auto) {
+                    saveSettings();
+                } else {
+                    updateStatus("Welcome! Configure settings to start.", 'info');
+                    spawnBall("DemoBot", false);
+                }
+            } catch (e) {
+                console.error("Error loading settings", e);
+            }
+        };
+    </script>
+</body>
+</html>
